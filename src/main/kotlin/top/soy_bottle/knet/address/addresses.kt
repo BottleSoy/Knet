@@ -1,6 +1,6 @@
 package top.soy_bottle.knet.address
 
-import top.soy_bottle.knet.utils.readVarInt
+import top.soy_bottle.knet.utils.readInt
 import java.io.InputStream
 import java.net.Inet4Address
 import java.net.Inet6Address
@@ -22,7 +22,7 @@ fun String.toAddress(): SocketAddress =
 	}
 
 fun InputStream.parseAddress(): Address {
-	val type = AddressType.values()[this.readVarInt()]
+	val type = AddressType.values()[this.readInt()]
 	return type.parser(this);
 }
 

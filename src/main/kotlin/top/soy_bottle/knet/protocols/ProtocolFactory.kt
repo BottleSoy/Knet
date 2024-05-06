@@ -4,6 +4,7 @@ import top.soy_bottle.knet.config.SectionConfig
 import top.soy_bottle.knet.protocols.forward.ForwardProtocol
 import top.soy_bottle.knet.protocols.forward.ForwardProtocolCreator
 import top.soy_bottle.knet.protocols.knet.KNetProtocol
+import top.soy_bottle.knet.protocols.knet.KNetProtocolCreator
 import top.soy_bottle.knet.protocols.tcp.TcpProtocolCreator
 import top.soy_bottle.knet.protocols.tls.TLSProtocolCreator
 import java.lang.RuntimeException
@@ -17,7 +18,7 @@ object ProtocolFactory {
 	fun getProtocols() = protocolMap.keys.toList()
 	
 	fun createProtocol(config: SectionConfig): AbstractProtocol<*> {
-		val type = config.getString("type")
+		val type = config.getString("type").lowercase()
 		val creator = protocolMap[type] ?: throw RuntimeException("missing protocol type of:$type")
 		return creator.createProtocol(config).getOrThrow()
 	}
@@ -26,8 +27,8 @@ object ProtocolFactory {
 		protocolMap["tcp"] = TcpProtocolCreator
 		protocolMap["tls"] = TLSProtocolCreator
 		protocolMap["forward"] = ForwardProtocolCreator
-		
-//		protocolMap["knet"] = KNetProtocol
+		protocolMap["knet"] = KNetProtocolCreator
+//		protocolMap["kcp"] =
 		
 	}
 }

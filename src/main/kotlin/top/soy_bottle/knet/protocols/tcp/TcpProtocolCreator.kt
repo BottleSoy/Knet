@@ -5,7 +5,6 @@ import top.soy_bottle.knet.config.JSFunction
 import top.soy_bottle.knet.config.SectionConfig
 import top.soy_bottle.knet.protocols.ProtocolCreator
 import top.soy_bottle.knet.protocols.selector.ProtocolSelector
-import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 
@@ -14,7 +13,7 @@ object TcpProtocolCreator : ProtocolCreator<TcpProtocol> {
 		return runCatching {
 			val name = config.getString("name")
 			val address = when (val addr = config["address"]) {
-				is JSFunction -> addr.invoke() as? SocketAddress
+				is JSFunction -> addr.invoke<SocketAddress>()
 				is String -> addr.toAddress()
 				is Int -> InetSocketAddress(addr)
 				else -> throw IllegalArgumentException()

@@ -23,28 +23,36 @@ data class TLSClientHello(
 	companion object {
 		fun fromStream(input: InputStream): TLSClientHello {
 			return TLSClientHello(
-				handshake = input.readByte(),
-				protocol = input.readShort(),
-				len = input.readShort(),
-				handshakeType = input.readByte(),
-				handshakeLen = {
-					input.skip(1) //第六位不读
-					input.readShort()
-				}(),
-				clientProtocol = input.readShort(),
+				handshake = input.readByte().apply {
+					if (this != 0x16.toByte()) throw IllegalArgumentException("Invaild TLS hello packet!!!")
+				},
+				protocol = input.readShort().apply {
+					if (this < 0x0300) throw IllegalArgumentException("Invaild TLS hello packet!!!")
+				},
+				len = input.readShort().apply {
+					if (input.available() < this) throw IllegalArgumentException("Invaild TLS hello packet!!!")
+				},
+				handshakeType = input.readByte().apply {
+					if (this != 0x01.toByte()) throw IllegalArgumentException("Invaild TLS hello packet!!!")
+				},
+				handshakeLen = run {
+					input.readByte().apply {//第六位==0
+						if (this != 0x00.toByte()) throw IllegalArgumentException("Invaild TLS hello packet!!!")
+					}
+					input.readShort().apply {
+						
+						if (input.available() < this) throw IllegalArgumentException("Invaild TLS hello packet!!!")
+					}
+				},
+				clientProtocol = input.readShort().apply {
+					if (this < 0x0300) throw IllegalArgumentException("Invaild TLS hello packet!!!")
+				},
 				random = input.readByteArray(32),
-				sessionID = input.readByteArray(input.readByte().toInt().apply {
-					println("sessionID len:$this")
-				}),
-				chiperData = input.readByteArray(input.readShort().toInt().apply {
-					println("chiperData len:$this")
-				}),
-				compressionData = input.readByteArray(input.readByte().toInt().apply {
-					println("compressionData len:$this")
-				}),
-				extends = TLSExtension.read(input.readShort().apply {
-					println("extends len:$this")
-				}, input)
+				sessionID = input.readByteArray(input.readByte().toInt()),
+				chiperData = input.readByteArray(input.readShort().toInt()),
+				compressionData = input.readByteArray(input.readByte().toInt()),
+				
+				extends = TLSExtension.read(input.readShort(), input)
 			)
 		}
 		

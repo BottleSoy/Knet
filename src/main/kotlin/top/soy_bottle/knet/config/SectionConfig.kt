@@ -16,9 +16,7 @@ interface SectionConfig : Iterable<String> {
 	
 	fun getSub(key: String): SectionConfig
 	
-	fun <R> getFunction(key: String): () -> R
-	
-	fun <R> getFunction(key: String, vararg params: List<Class<*>>): (List<*>) -> R
+	fun getFunction(key: String): JSFunction
 	
 	fun getList(key: String): ListConfig
 	
@@ -49,9 +47,7 @@ fun SectionConfig.getOrDefault(key: String, default: Double) = runCatching {
 	getDouble(key)
 }.getOrDefault(default)
 
-fun <R> SectionConfig.getOrDefault(key: String, default: () -> R) = runCatching {
-	getFunction<R>(key)
-}.getOrDefault(default)
+
 
 
 fun SectionConfig.getSubOrNull(key: String): SectionConfig? = this[key] as? SectionConfig

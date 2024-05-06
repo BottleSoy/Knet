@@ -5,7 +5,7 @@ import top.soy_bottle.knet.protocols.Connection
 
 class JSProtocolSelector(val jsFunction: JSFunction) : ProtocolSelector {
 	override fun selectProtocol(connection: Connection) = runCatching {
-		jsFunction.invoke(connection) as String
+		jsFunction.invoke<String>(connection)!!
 	}
 	
 }

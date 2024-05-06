@@ -10,11 +10,10 @@ import top.soy_bottle.knet.protocols.ProtocolFactory
 import top.soy_bottle.knet.protocols.ProtocolSystem
 
 class KNetServer(val config: KNetConfig) : KApplication {
-	
 	override fun start() {
 		logger.info("[Server] 服务端启动中...")
-		when(config){
-			is JSConfig->{
+		when (config) {
+			is JSConfig -> {
 				config.getList("sections").sectionList().forEach {
 					ProtocolSystem += ProtocolFactory.createProtocol(it)
 				}
@@ -23,7 +22,5 @@ class KNetServer(val config: KNetConfig) : KApplication {
 			is KTSConfig -> config.execute()
 		}
 		logger.info("[Server] 服务端启动完毕！")
-		while (true)
-			Thread.sleep(100000)
 	}
 }

@@ -4,65 +4,45 @@ import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
 
-fun InputStream.readRaw(size: Int = 2048): Pair<Int, ByteArray> {
-	val bytes = ByteArray(size)
-	val readed = this.read(bytes, 0, size)
-	return readed to bytes
-}
-
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readByte(): Byte {
+fun InputStream.readByte(): Byte = synchronized(this) {
 	return this.read().toByte()
 }
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readUByte(): Int {
+fun InputStream.readUByte(): Int = synchronized(this) {
 	return this.read()
 }
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readShort(): Short {
+fun InputStream.readShort(): Short = synchronized(this) {
 	return ((readByte().toInt() and 0xff shl 8) or
 		(readByte().toInt() and 0xff)).toShort()
 }
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readUShort(): Int {
+fun InputStream.readUShort(): Int = synchronized(this) {
 	return ((readByte().toInt() and 0xff shl 8) or
 		(readByte().toInt() and 0xff))
 }
 
-@Synchronized
-@Throws(IOException::class)
-fun InputStream.readVarInt(): Int {
-	var b: Byte
-	var i = 0
-	var j = 0
-	do {
-		b = this.readByte()
-		i = i or (b.toInt() and 0x7F shl j++) * 7
-		if (j <= 5) continue
-		throw RuntimeException("VarInt too big")
-	} while (b.toInt() and 0x80 == 128)
-	return i
-}
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readInt(): Int {
+fun InputStream.readInt(): Int = synchronized(this) {
 	return (readByte().toInt() and 0xff shl 24) or
 		(readByte().toInt() and 0xff shl 16) or
 		(readByte().toInt() and 0xff shl 8) or
 		(readByte().toInt() and 0xff)
 }
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readLong(): Long {
+fun InputStream.readFloat(): Float = synchronized(this) {
+	return java.lang.Float.intBitsToFloat(this.readInt())
+}
+
+
+@Throws(IOException::class)
+fun InputStream.readLong(): Long = synchronized(this) {
 	return (readByte().toLong() and 0xff shl 56) or
 		(readByte().toLong() and 0xff shl 48) or
 		(readByte().toLong() and 0xff shl 40) or
@@ -74,36 +54,46 @@ fun InputStream.readLong(): Long {
 		(readByte().toLong() and 0xff)
 }
 
-@Synchronized
-@Throws(IOException::class)
-fun InputStream.readBoolean() = read() == 0
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readByteArray() = readByteArray(readVarInt())
+fun InputStream.readDouble(): Double = synchronized(this) { java.lang.Double.longBitsToDouble(readLong()) }
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readByteArray(len: Int): ByteArray = readNBytes(len)
+fun InputStream.readBoolean() = synchronized(this) { read() == 0 }
+
+@Throws(IOException::class)
+fun InputStream.readByteArray() = synchronized(this) { readByteArray(this.readInt()) }
+
+
+@Throws(IOException::class)
+fun InputStream.readByteArray(len: Int): ByteArray = synchronized(this) {
+	val data = ByteArray(len)
+	var pos = 0
+	while (pos < len) {
+		val remain = len - pos
+		val c = read(data, pos, remain)
+		pos += c
+	}
+	return data
+}
 
 fun ByteArray.javaBuffer(): ByteBuffer = ByteBuffer.wrap(this)
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readString() = readString(readVarInt())
+fun InputStream.readString() = synchronized(this) {
+	readString(this.readInt())
+}
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readString(len: Int): String {
+fun InputStream.readString(len: Int): String = synchronized(this) {
 	val bytes = readByteArray(len)
 	return charset.decode(bytes.javaBuffer()).toString()
 }
 
 
-@Synchronized
 @Throws(IOException::class)
-fun <T> InputStream.readArray(elementRead: (InputStream) -> T): List<T> {
-	val size = readVarInt()
+fun <T> InputStream.readArray(elementRead: (InputStream) -> T): List<T> = synchronized(this) {
+	val size = this.readInt()
 	val list = ArrayList<T>(size)
 	repeat(size) {
 		list += elementRead(this)
@@ -111,6 +101,5 @@ fun <T> InputStream.readArray(elementRead: (InputStream) -> T): List<T> {
 	return list
 }
 
-@Synchronized
 @Throws(IOException::class)
-fun InputStream.readStringList(): List<String> = readArray { readString() }
+fun InputStream.readStringList(): List<String> = synchronized(this) { readArray { readString() } }

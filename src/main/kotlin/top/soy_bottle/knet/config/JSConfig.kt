@@ -28,14 +28,7 @@ class JSConfig(val value: Value) : KNetConfig, SectionConfig {
 	override fun getDouble(key: String) = data[key] as Double
 	
 	override fun getSub(key: String) = data[key] as SectionConfig
-	
-	override fun <R> getFunction(key: String): () -> R = {
-		(data[key] as JSFunction).invoke() as R
-	}
-	
-	override fun <R> getFunction(key: String, vararg params: List<Class<*>>): (List<*>) -> R = {
-		(data[key] as JSFunction).invoke(*it.toTypedArray()) as R
-	}
+	override fun getFunction(key: String) = data[key] as JSFunction
 	
 	override fun getList(key: String) = data[key] as ListConfig
 	
@@ -49,6 +42,8 @@ class JSConfig(val value: Value) : KNetConfig, SectionConfig {
 				fitsInInt() -> asInt()
 				fitsInDouble() -> asDouble()
 				isDate -> asDate()
+				isTime -> asTime()
+				isDuration -> asDuration()
 				canExecute() -> JSFunction(this)
 				
 				hasArrayElements() -> JSListConfig(this)

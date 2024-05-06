@@ -4,6 +4,7 @@ import top.soy_bottle.knet.protocols.Connection
 
 /**
  * 实现负载均衡的前进协议
+ * TODO 可能因为设计不需要了
  */
 class LoadBlanaceForwardProtocol : ForwardProtocol() {
 	

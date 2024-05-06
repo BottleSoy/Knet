@@ -11,6 +11,7 @@ enum class AddressType(
 	IPV4_UDP({ input -> IPv4Address.parseAddress4(IPV4_UDP, input) }, "UDP", "IPV4"),
 	IPV6_TCP({ input -> IPv6Address.parseAddress6(IPV6_TCP, input) }, "TCP", "IPV6"),
 	IPV6_UDP({ input -> IPv6Address.parseAddress6(IPV6_UDP, input) }, "UDP", "IPV6"),
-	UNIX_DOMAIN_SOCKET(UnixDomainAddress::parse, "UDS", "NONE");
+	UNIX_DOMAIN_SOCKET(UnixDomainAddress::parse, "UDS", "NONE"),
+	UNKNOWN({ UnknownAddress }, "UNKNOWN", "NONE");
 	
 }

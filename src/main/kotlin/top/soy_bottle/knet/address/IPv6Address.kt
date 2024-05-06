@@ -19,7 +19,7 @@ class IPv6Address(
 	
 	override fun <O : OutputStream> writeAddress(out: O) =
 		out.writeByteArray(address, INADDRSZ)
-			.writeVarInt(port)
+			.writeInt(port)
 	
 	
 	override fun toString() = "[${type.typeName}] ${addressToString(address)}:$port"
@@ -47,7 +47,7 @@ class IPv6Address(
 	companion object {
 		fun parseAddress6(type: AddressType, i: InputStream): IPv6Address {
 			val address = i.readNBytes(INADDRSZ) //128位地址
-			val port = i.readVarInt()
+			val port = i.readInt()
 			return IPv6Address(type == AddressType.IPV6_TCP, address, port)
 		}
 		

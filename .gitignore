@@ -1,5 +1,6 @@
 /target
 *.pem
+*.crt
 *.key
 *.js
 *.kts

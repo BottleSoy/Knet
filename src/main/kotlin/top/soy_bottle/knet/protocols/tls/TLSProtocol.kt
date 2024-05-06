@@ -2,14 +2,13 @@ package top.soy_bottle.knet.protocols.tls
 
 import top.soy_bottle.knet.protocols.AbstractProtocol
 import top.soy_bottle.knet.protocols.Connection
-import top.soy_bottle.knet.protocols.forward.ForwardProtocol
-import top.soy_bottle.knet.protocols.forward.ForwardTarget
 import top.soy_bottle.knet.protocols.tls.packet.TLSClientHello
-import top.soy_bottle.knet.socket.BufferedSocket
 import top.soy_bottle.knet.utils.SizeLimitedInputStream
 import top.soy_bottle.knet.utils.markWith
-import java.io.BufferedInputStream
+import top.soy_bottle.knet.utils.tls.defaultSSLContext
+import top.soy_bottle.knet.utils.withTimeout
 import java.io.IOException
+import java.nio.charset.Charset
 import javax.net.ssl.SNIMatcher
 import javax.net.ssl.SNIServerName
 
@@ -18,30 +17,39 @@ class TLSProtocol(override val name: String, val config: TLSProtocolConfig) : Ab
 	override val connections = hashSetOf<TLSConnection>()
 	
 	override fun detect(connection: Connection) = detectIsSSL(connection.input)
+	
 	@Throws(IOException::class)
 	override fun directHandle(connection: Connection) {
-		val hello = connection.input.markWith(1536) {
-			TLSClientHello.fromStream(this)
+		val hello = withTimeout(3000) { //设置ClientHello读取时间
+			connection.input.markWith(16384) {
+				TLSClientHello.fromStream(this)
+			}
 		}
-		println("hello:$hello")
 		val context = this.config.createContext(connection, hello)
-		println("context:$context")
 		if (context != null) {
 			connections += TLSConnection(this, connection, hello, context.socketFactory, {
 				this.config.configureSSLParameters(connection, hello, context, it)
 			}) { e, c ->
-				val target = this.config.selectProtocol(c)
-				println("target:$target")
-				target.selectAndHandle(c)
+				try {
+					val target = this.config.selectProtocol(c)
+					target.selectAndHandle(c)
+				} catch (e: Exception) {
+					e.printStackTrace()
+				}
 			}
-		} else {
-			connections += TLSConnection(this, connection, hello, TLSProtocolCreator.defaultContext.socketFactory, {
+		} else { //空Context,返回不匹配任何ServerName。
+			connections += TLSConnection(this, connection, hello, defaultSSLContext.socketFactory, {
 				it.sniMatchers = listOf(object : SNIMatcher(0) {
 					override fun matches(serverName: SNIServerName?) = false
 				})
 //				it.protocols = arrayOf()
 //				it.cipherSuites = arrayOf()
 				it.serverNames = listOf()
+				/*
+				 * 在这里配置的SSLParameters会反应不同的客户端错误
+				 * 比如说不配置任何protocol则会让客户端不知道TLS具体版本
+				 * 不配置任何cipherSuites则会让客户端无法使用加密算法
+				 */
 				it
 			}) { _, c ->
 				c.close()
@@ -53,7 +61,7 @@ class TLSProtocol(override val name: String, val config: TLSProtocolConfig) : Ab
 	companion object {
 		
 		/**
-		 * 获取Socket的ClientHello前11位消息
+		 * 获取ClientHello的前11位消息
 		 *
 		 * 在这个方法中，读取了首包的11个字节
 		 *
@@ -70,9 +78,9 @@ class TLSProtocol(override val name: String, val config: TLSProtocolConfig) : Ab
 		 */
 		fun detectIsSSL(input: SizeLimitedInputStream): Boolean {
 			input.markWith(11) {
-				if (input.available() < 11) return false
 				val msg = ByteArray(11)
-				input.read(msg, 0, msg.size)
+				val size = input.read(msg, 0, msg.size)
+				if (size < 11) return false
 				return msg[0] == 0x16.toByte() &&
 					msg[1] == 0x03.toByte() &&
 					msg[2] >= 0x01.toByte() &&

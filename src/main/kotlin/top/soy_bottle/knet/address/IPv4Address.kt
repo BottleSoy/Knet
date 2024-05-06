@@ -18,7 +18,7 @@ class IPv4Address(
 	override val type: AddressType = if (tcp) AddressType.IPV4_TCP else AddressType.IPV4_UDP
 	override fun <O : OutputStream> writeAddress(out: O) =
 		out.writeByteArray(address, 4)
-			.writeVarInt(port)
+			.writeInt(port)
 	
 	
 	override fun toString() = "[${type.typeName}] ${addressToString(address)}:$port"
@@ -44,8 +44,8 @@ class IPv4Address(
 	
 	companion object {
 		fun parseAddress4(type: AddressType, `in`: InputStream): IPv4Address {
-			val address = `in`.readNBytes(4)
-			val port = `in`.readVarInt()
+			val address = `in`.readByteArray(4)
+			val port = `in`.readInt()
 			return IPv4Address(type == AddressType.IPV4_TCP, address, port)
 		}
 		

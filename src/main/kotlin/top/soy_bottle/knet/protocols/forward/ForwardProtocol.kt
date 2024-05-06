@@ -1,17 +1,8 @@
 package top.soy_bottle.knet.protocols.forward
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import top.soy_bottle.knet.protocols.AbstractProtocol
 import top.soy_bottle.knet.protocols.Connection
 import java.lang.IllegalStateException
-import java.net.InetSocketAddress
-import java.net.ServerSocket
-import java.net.Socket
-import java.net.SocketAddress
-
 /**
  * 反向代理协议
  */

@@ -2,8 +2,6 @@ package top.soy_bottle.knet.socket
 
 import top.soy_bottle.knet.utils.SizeLimitedInputStream
 import top.soy_bottle.knet.utils.SizeLimitedOutputStream
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
 import java.net.*
 import javax.net.ServerSocketFactory
 

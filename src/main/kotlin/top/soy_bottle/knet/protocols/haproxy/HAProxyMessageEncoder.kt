@@ -40,9 +40,9 @@ object HAProxyMessageEncoder {
 	 * create HAProxyMessage
 	 */
 	fun createMessage(connection: Connection, version: HAProxyProtocolVersion = HAProxyProtocolVersion.V2): ByteArray {
-		val rootSocket = connection.parents.first().javaSocket()
-		val remoteAddress = rootSocket.remoteSocketAddress
-		val localAddress = rootSocket.localSocketAddress
+		
+		val remoteAddress = connection.remoteAddress ?: throw HAProxyProtocolException("Missing connection remoteAddress")
+		val localAddress = connection.localAddress ?: throw HAProxyProtocolException("Missing connection localAddress")
 		
 		val message = when (remoteAddress) {
 			is InetSocketAddress -> {
@@ -52,7 +52,7 @@ object HAProxyMessageEncoder {
 						HAProxyMessage(
 							version, HAProxyCommand.PROXY, HAProxyProxiedProtocol.TCP4,
 							remoteAddress.address.hostAddress, localAddress.address.hostAddress,
-							rootSocket.port, rootSocket.localPort
+							remoteAddress.port, localAddress.port
 						)
 					}
 					
@@ -60,7 +60,7 @@ object HAProxyMessageEncoder {
 						HAProxyMessage(
 							version, HAProxyCommand.PROXY, HAProxyProxiedProtocol.TCP6,
 							remoteAddress.address.hostAddress, localAddress.address.hostAddress,
-							rootSocket.port, rootSocket.localPort
+							remoteAddress.port, localAddress.port
 						)
 					}
 					

@@ -11,17 +11,19 @@ class HAProxyConnection(
 	override val protocol: HAProxyMessageProtocol, connection: Connection, val proxyMessage: HAProxyMessage,
 ) : BasicConnection(connection)
 
-fun Connection.lookupRealAddress(): SocketAddress {
-	for (it in this.parents + this) {
-		if (it is HAProxyConnection) {
-			val msg = it.proxyMessage
-			return when (msg.proxiedProtocol.addressFamily) {
-				AddressFamily.AF_UNSPEC -> throw HAProxyProtocolException("using UNSPEC addressFamily")
-				AddressFamily.AF_IPv4, AddressFamily.AF_IPv6 -> 
-					InetSocketAddress(InetAddress.getByName(msg.sourceAddress), msg.sourcePort)
-				AddressFamily.AF_UNIX -> UnixDomainSocketAddress.of(msg.sourceAddress)
+val Connection.realAddress: SocketAddress?
+	get() {
+		for (it in this.parents + this) {
+			if (it is HAProxyConnection) {
+				val msg = it.proxyMessage
+				return when (msg.proxiedProtocol.addressFamily) {
+					AddressFamily.AF_UNSPEC -> throw HAProxyProtocolException("using UNSPEC addressFamily")
+					AddressFamily.AF_IPv4, AddressFamily.AF_IPv6 ->
+						InetSocketAddress(InetAddress.getByName(msg.sourceAddress), msg.sourcePort)
+					
+					AddressFamily.AF_UNIX -> UnixDomainSocketAddress.of(msg.sourceAddress)
+				}
 			}
 		}
+		return this.remoteAddress
 	}
-	return this.javaSocket().remoteSocketAddress
-}

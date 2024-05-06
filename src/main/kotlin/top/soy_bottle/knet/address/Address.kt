@@ -1,10 +1,12 @@
 package top.soy_bottle.knet.address
 
-import top.soy_bottle.knet.utils.readVarInt
+import top.soy_bottle.knet.utils.readInt
+import top.soy_bottle.knet.utils.writeInt
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.Serializable
 
-sealed class Address {
+sealed class Address : Serializable {
 	abstract val ipString: String
 	abstract val port: Int
 	abstract val type: AddressType
@@ -14,9 +16,13 @@ sealed class Address {
 	abstract override fun equals(other: Any?): Boolean
 }
 
-fun <O : OutputStream> O.writeAddress(address: Address) = address.writeAddress(this)
+fun <O : OutputStream> O.writeAddress(address: Address): O {
+	this.writeInt(address.type.ordinal)
+	address.writeAddress(this)
+	return this
+}
 
 fun InputStream.readAddress(): Address {
-	val type = this.readVarInt()
+	val type = this.readInt()
 	return AddressType.values()[type].parser(this)
 }

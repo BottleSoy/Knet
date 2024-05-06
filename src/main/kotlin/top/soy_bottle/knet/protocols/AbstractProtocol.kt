@@ -24,9 +24,10 @@ interface AbstractProtocol<Con : Connection> {
 	 * 检测是不是当前协议
 	 *
 	 * **请在检测之后将连接还原**
+	 *
 	 * @param connection 测试的连接
 	 */
-	fun detect(connection: Connection): Boolean
+	fun detect(connection: Connection): Boolean = true
 	
 	/**
 	 * 直接处理连接

@@ -5,8 +5,10 @@ import java.io.FilterOutputStream
 import java.io.IOException
 import java.io.OutputStream
 
-open class SizeLimitedOutputStream(out: OutputStream, val size: Int = DEFAULT_BUFFER_SIZE) :
+open class SizeLimitedOutputStream(out: OutputStream, var size: Int = DEFAULT_BUFFER_SIZE) :
 	FilterOutputStream(out) {
+	var totalSize = 0
+		protected set
 	protected var buf: ByteArray = ByteArray(size)
 	
 	/**
@@ -24,6 +26,8 @@ open class SizeLimitedOutputStream(out: OutputStream, val size: Int = DEFAULT_BU
 	 *
 	 * `note:之前的消息都应该被发送`
 	 */
+	@Synchronized
+	@Throws(IOException::class)
 	fun lockBuffer() {
 		flush()
 		locked = true
@@ -34,6 +38,7 @@ open class SizeLimitedOutputStream(out: OutputStream, val size: Int = DEFAULT_BU
 	}
 	
 	@Synchronized
+	@Throws(IOException::class)
 	fun undo(len: Int) {
 		if (!locked) {
 			throw IOException("SizeLimitedOutputStream not locked!!!")
@@ -45,6 +50,7 @@ open class SizeLimitedOutputStream(out: OutputStream, val size: Int = DEFAULT_BU
 	}
 	
 	@Synchronized
+	@Throws(IOException::class)
 	override fun write(b: ByteArray, off: Int, len: Int) {
 		if (size == 0) return out.write(b, off, len)
 		if ((len >= buf.size || len > buf.size - count) && locked) {
@@ -63,6 +69,7 @@ open class SizeLimitedOutputStream(out: OutputStream, val size: Int = DEFAULT_BU
 	}
 	
 	@Synchronized
+	@Throws(IOException::class)
 	override fun write(b: Int) {
 		if (size == 0) return out.write(b)
 		if (count >= buf.size && locked) {
@@ -73,18 +80,21 @@ open class SizeLimitedOutputStream(out: OutputStream, val size: Int = DEFAULT_BU
 		}
 		buf[count++] = b.toByte()
 	}
+	
 	@Synchronized
 	@Throws(IOException::class)
-	private fun flushBuffer() {
+	protected open fun flushBuffer() {
 		if (count > 0) {
 			out.write(buf, 0, count)
 			out.flush()
-			logger.info("[SizedLimitOutput] flush $count bytes to $out")
+//			logger.info("[SizedLimitOutput] flush $count bytes to $out")
+			totalSize += count
 			count = 0
 		}
 	}
 	
 	@Synchronized
+	@Throws(IOException::class)
 	override fun flush() {
 		if (locked)
 			throw IOException("SizeLimitedOutputStream locked")

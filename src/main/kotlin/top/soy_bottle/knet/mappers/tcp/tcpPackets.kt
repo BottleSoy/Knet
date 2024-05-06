@@ -18,20 +18,35 @@ sealed interface TcpClientPacket : Packet
  */
 sealed interface TcpServerPacket : Packet
 
+/**
+ *
+ */
+class ClientNewTcpConnectionPacket(
+	val connectionId: Int,
+) : TcpClientPacket {
+	constructor(i: InputStream) : this(
+		i.readInt()
+	)
+	override fun <O : OutputStream> write(out: O) =
+		out.writeInt(connectionId)
+	
+}
+
+
 class ServerNewTcpConnectionPacket(
 	val mapperId: Int,
 	val connectionId: Int,
 	val info: ConnectionInfo,
 ) : TcpServerPacket {
 	constructor(i: InputStream) : this(
-		i.readVarInt(),
-		i.readVarInt(),
+		i.readInt(),
+		i.readInt(),
 		i.readConnectionInfo()
 	)
 	
 	override fun <O : OutputStream> write(out: O) =
-		out.writeVarInt(mapperId)
-			.writeVarInt(connectionId)
+		out.writeInt(mapperId)
+			.writeInt(connectionId)
 			.writeConnectionInfo(info)
 }
 
@@ -40,13 +55,14 @@ class ClientTcpDataPacket(
 	val data: ByteArray,
 	val len: Int = data.size,
 ) : TcpClientPacket {
-	constructor(buf: InputStream) : this(
-		buf.readVarInt(),
-		buf.readByteArray()
+	constructor(i: InputStream) : this(
+		i.readInt(),
+		i.readByteArray()
 	)
 	
 	override fun <O : OutputStream> write(out: O) =
-		out.writeVarInt(connectionId)
+		out.writeInt(connectionId)
+			.writeInt(len)
 			.writeByteArray(data, len)
 	
 }
@@ -54,15 +70,16 @@ class ClientTcpDataPacket(
 class ServerTcpDataPacket(
 	val connectionId: Int,
 	val data: ByteArray,
-	val len: Int = data.size
+	val len: Int = data.size,
 ) : TcpServerPacket {
 	constructor(buf: InputStream) : this(
-		buf.readVarInt(),
+		buf.readInt(),
 		buf.readByteArray()
 	)
 	
 	override fun <O : OutputStream> write(out: O) =
-		out.writeVarInt(connectionId)
+		out.writeInt(connectionId)
+			.writeInt(len)
 			.writeByteArray(data, len)
 	
 }
@@ -72,12 +89,12 @@ class ClientTcpClosePacket(
 	val normalClose: Boolean,
 ) : TcpClientPacket {
 	constructor(buf: InputStream) : this(
-		buf.readVarInt(),
+		buf.readInt(),
 		buf.readBoolean()
 	)
 	
 	override fun <O : OutputStream> write(out: O) =
-		out.writeVarInt(connectionId)
+		out.writeInt(connectionId)
 			.writeBoolean(normalClose)
 	
 }
@@ -87,11 +104,11 @@ class ServerTcpClosePacket(
 	val normalClose: Boolean,
 ) : TcpServerPacket {
 	constructor(buf: InputStream) : this(
-		buf.readVarInt(),
+		buf.readInt(),
 		buf.readBoolean()
 	)
 	
 	override fun <O : OutputStream> write(out: O) =
-		out.writeVarInt(connectionId)
+		out.writeInt(connectionId)
 			.writeBoolean(normalClose)
 }

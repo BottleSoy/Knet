@@ -9,28 +9,29 @@ import top.soy_bottle.knet.utils.writeStringList
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.Serializable
 
 class ConnectionInfo(
 	val realAddress: Address,
 	val remoteAddress: Address,
 	val localAddress: Address,
 	val protocolNames: List<String>,
-)
-
-@Synchronized
+) : Serializable
 
 @Throws(IOException::class)
-fun <O : OutputStream> O.writeConnectionInfo(info: ConnectionInfo): O {
+fun <O : OutputStream> O.writeConnectionInfo(info: ConnectionInfo) = synchronized(this) {
 	this.writeAddress(info.realAddress)
-	this.writeAddress(info.remoteAddress)
-	this.writeAddress(info.localAddress)
-	this.writeStringList(info.protocolNames)
-	return this
+		.writeAddress(info.remoteAddress)
+		.writeAddress(info.localAddress)
+		.writeStringList(info.protocolNames)
 }
 
-@Synchronized
-
 @Throws(IOException::class)
-fun InputStream.readConnectionInfo(): ConnectionInfo {
-	return ConnectionInfo(readAddress(), readAddress(), readAddress(), readStringList())
+fun InputStream.readConnectionInfo(): ConnectionInfo = synchronized(this) {
+	return ConnectionInfo(
+		readAddress(),
+		readAddress(),
+		readAddress(),
+		readStringList()
+	)
 }

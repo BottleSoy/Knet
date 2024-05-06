@@ -4,6 +4,8 @@ import top.soy_bottle.knet.utils.SizeLimitedInputStream
 import top.soy_bottle.knet.utils.SizeLimitedOutputStream
 import java.lang.StringBuilder
 import java.net.Socket
+import java.net.SocketAddress
+import java.nio.channels.SocketChannel
 
 abstract class BasicConnection(val connection: Connection) : Connection() {
 	abstract override val protocol: AbstractProtocol<*>
@@ -13,13 +15,14 @@ abstract class BasicConnection(val connection: Connection) : Connection() {
 	override val input: SizeLimitedInputStream get() = connection.input
 	override val output: SizeLimitedOutputStream get() = connection.output
 	
-	private val jSocket: Socket get() = connection.javaSocket()
-	
-	override fun javaSocket(): Socket = jSocket
+	override val remoteAddress: SocketAddress?
+		get() = connection.remoteAddress
+	override val localAddress: SocketAddress?
+		get() = connection.localAddress
 	
 	override fun toString(): String =
 		"${javaClass.simpleName}:${protocol.name}, " +
-			"parents:${parents.map { it.protocol.name }.toList()}"
+			"parents:${parents.map { it.toString() }.toList()}"
 	
 	override fun close() {
 		super.close()

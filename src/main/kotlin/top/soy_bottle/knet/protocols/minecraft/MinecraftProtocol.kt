@@ -30,11 +30,11 @@ class MinecraftProtocol(override val name: String) : AbstractProtocol<MinecraftC
 				if (i.available() < 5) return null
 				val id = i.readByte()
 				if (id != 0.toByte()) return null
-				val len = i.readVarInt()
+				val len = i.readInt()
 				if (i.available() < len + 3) return null
 				val host = i.readString(len)
 				val port = i.readUShort()
-				val nextState = i.readVarInt()
+				val nextState = i.readInt()
 				return MinecraftHandshakePacket(host, port, nextState)
 			}
 		}

@@ -25,12 +25,15 @@ import top.soy_bottle.knet.protocols.tls.packet.getSNI
 import top.soy_bottle.knet.utils.tls.*
 import java.io.File
 import java.security.KeyFactory
+import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLParameters
+import javax.net.ssl.TrustManager
+import javax.net.ssl.TrustManagerFactory
 
 
 object TLSProtocolCreator : ProtocolCreator<TLSProtocol> {
@@ -47,9 +50,9 @@ object TLSProtocolCreator : ProtocolCreator<TLSProtocol> {
 						val context = getCertificate(section["pemFiles"]) ?: return@forEach
 						certs.add(context)
 					}
-					val certContexts = mapOf(*certs.map { it to it.createTLSContext() }.toTypedArray())
+					val certContexts = mapOf(*certs.map { it to it.createSSLContext() }.toTypedArray())
 					
-					when (val contextSelector = config["context-selector"] ?: "perDomain") {
+					when (val contextSelector = config["contextSelector"] ?: "perDomain") {
 						is String -> when (contextSelector) {
 							"perDomain" -> contextCreator =
 								object : (Connection, TLSClientHello) -> SSLContext? {
@@ -73,26 +76,36 @@ object TLSProtocolCreator : ProtocolCreator<TLSProtocol> {
 							}
 						}
 						
-						is JSFunction -> contextCreator = { c, h -> certContexts[certs[contextSelector(c, h) as Int]] }
+						is JSFunction -> contextCreator = { c, h -> certContexts[certs[contextSelector.invokeRaw(c, h) as Int]] }
 					}
 				}
 				
-				is JSFunction -> contextCreator = { c, h -> contexts.invoke(c, h) as SSLContext? }
+				is JSFunction -> contextCreator = { c, h -> contexts.invoke<SSLContext>(c, h) }
 			}
 		}
 		var sslConfigure: (Connection, TLSClientHello, SSLContext, SSLParameters) -> SSLParameters =
 			{ _, _, _, d -> d }
 		when (val configure = config["configure"]) {
-			is JSFunction -> sslConfigure = { c, h, t, d -> configure.invoke(c, h, t, d) as SSLParameters }
+			is JSFunction -> sslConfigure = { c, h, t, d ->
+				val res = configure.invoke<SSLParameters>(c, h, t, d)
+				res!!
+			}
+			
 			is SectionConfig -> {
-				val tlsVersion = configure.getStringOrStringListOrNull("tls-version")?.toTypedArray()
+				val tlsVersion = configure.getStringOrStringListOrNull("tlsVersion")?.toTypedArray()
 				val alpn = configure.getStringOrStringListOrNull("alpn")?.toTypedArray()
 				val chipers = configure.getStringOrStringListOrNull("chipers")?.toTypedArray()
-				
+				val clientAuth = config.getStringOrNull("clientAuth")
 				sslConfigure = { c, h, t, s ->
 					tlsVersion?.let { s.protocols = it }
 					alpn?.let { s.applicationProtocols = it }
 					chipers?.let { s.cipherSuites = chipers }
+					when (clientAuth) {
+						"NEED" -> s.needClientAuth = true
+						"WANT" -> s.wantClientAuth = true
+						"NO" -> s.needClientAuth = false
+					}
+					
 					s
 				}
 			}
@@ -135,7 +148,7 @@ object TLSProtocolCreator : ProtocolCreator<TLSProtocol> {
 	
 	private fun getCertificate(data: Any?): TLSCertificate? = when (data) {
 		null -> null
-		is JSFunction -> data() as TLSCertificate?
+		is JSFunction -> data.invokeRaw() as TLSCertificate?
 		is ListConfig -> {
 			val pems = arrayListOf<PemObject>()
 			data.stringList().forEach {
@@ -151,7 +164,7 @@ object TLSProtocolCreator : ProtocolCreator<TLSProtocol> {
 			
 			pems.forEach { pem ->
 				when (pem.type) {
-					"RSA PRIVATE KEY" -> {
+					"RSA PRIVATE KEY", "PRIVATE KEY" -> {
 						val factory = KeyFactory.getInstance("RSA")
 						val obj = RSAPrivateKey.getInstance(ASN1Sequence.getInstance(pem.content));
 						val algId = AlgorithmIdentifier(PKCSObjectIdentifiers.rsaEncryption, DERNull.INSTANCE)
@@ -164,8 +177,10 @@ object TLSProtocolCreator : ProtocolCreator<TLSProtocol> {
 						val factory = KeyFactory.getInstance("EC")
 						val obj = ECPrivateKey.getInstance(ASN1Sequence.getInstance(pem.content));
 						val algId = AlgorithmIdentifier(X9ObjectIdentifiers.id_ecPublicKey, obj.parametersObject)
-						val keybytes = PKCS8Generator(PrivateKeyInfo(algId, obj), null).generate().content
+						val ecChangedKey = PKCS8Generator(PrivateKeyInfo(algId, obj), null).generate()
+						val keybytes = ecChangedKey.content
 						val spec = PKCS8EncodedKeySpec(keybytes)
+						
 						privateKey = factory.generatePrivate(spec)
 					}
 					
@@ -177,7 +192,6 @@ object TLSProtocolCreator : ProtocolCreator<TLSProtocol> {
 						val g = ASN1Integer.getInstance(seq.getObjectAt(3))
 						val y = ASN1Integer.getInstance(seq.getObjectAt(4))
 						val x = ASN1Integer.getInstance(seq.getObjectAt(5))
-						
 						
 						val keybytes = PKCS8Generator(
 							PrivateKeyInfo(
@@ -201,35 +215,25 @@ object TLSProtocolCreator : ProtocolCreator<TLSProtocol> {
 			}
 			privateKey?.let { BaseTLSCertificate(it, certificates) }
 		}
-
-//		is SectionConfig -> {
-//
-//		}
+		
 		
 		else -> throw IllegalArgumentException("data is not a viald js type!!!")
 	}
 	
-	val defaultContext = SSLContext.getDefault()
-	
 	private fun getContext(data: Any?): SSLContext? {
 		return when (data) {
-			null -> defaultContext
-			is JSFunction -> (data() as SSLContext)
+			null -> defaultSSLContext
+			is JSFunction -> data.invoke<SSLContext>()
 			
 			is SectionConfig -> {
-				val cert = getCertificate(data["pemFiles"]) ?: return null
-				return cert.createTLSContext()
+				val tlsServerKey = getCertificate(data["pemFiles"]) ?: return null
+				return tlsServerKey.createSSLContext()
 			}
 			
 			else -> throw IllegalArgumentException("data is not a viald js type!!!")
 		}
 	}
 }
-
-class SSLContextEnv(
-	val context: SSLContext,
-	val cert: TLSCertificate?,
-)
 
 fun SectionConfig.getStringOrStringListOrNull(key: String): List<String>? {
 	when (val v = this[key]) {

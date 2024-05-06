@@ -1,14 +1,12 @@
 package top.soy_bottle.knet.protocols.forward
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
+
 import top.soy_bottle.knet.logger
 import top.soy_bottle.knet.protocols.BasicConnection
 import top.soy_bottle.knet.protocols.Connection
 import top.soy_bottle.knet.socket.TcpClient
 import top.soy_bottle.knet.utils.Copier
+import top.soy_bottle.knet.utils.coroutine.BasicJob
 
 /**
  * 反向代理连接
@@ -16,7 +14,7 @@ import top.soy_bottle.knet.utils.Copier
 sealed class ForwardConnection(
 	override val protocol: ForwardProtocol,
 	connection: Connection,
-) : BasicConnection(connection), CoroutineScope by CoroutineScope(Dispatchers.IO) {
+) : BasicConnection(connection) {
 	abstract fun start(): ForwardConnection
 }
 
@@ -27,38 +25,36 @@ class TcpForwardConnection(
 	val target: TcpForwardTarget,
 ) : ForwardConnection(protocol, connection) {
 	
-	val client: TcpClient = TcpClient(target.address, this)
+	val client: TcpClient = TcpClient(target.address)
 	lateinit var iCopier: Copier
 	lateinit var oCopier: Copier
 	
 	override fun start(): TcpForwardConnection {
-		launch {
-			val res = client.start().await()
+		BasicJob {
+			val res = client.start()
 			if (res.isSuccess) {
-				logger.info("[Forward] [Tcp] 目标${target.address}已连接")
-				iCopier = Copier(input, client.out, name = "$tunnel UpStream", scope = this)
-				oCopier = Copier(client.`in`, output, name = "$tunnel DownStream", scope = this)
-				launch {
+				logger.debug("[Forward] [Tcp] 目标${target.address.toString()}已连接")
+				iCopier = Copier(input, client.output, name = "$tunnel UpStream")
+				oCopier = Copier(client.input, output, name = "$tunnel DownStream")
+				BasicJob {
 					val resi = iCopier.start().await()
-					logger.info("[Forward] [Tcp] $tunnel 断开连接(iCopier)")
+					logger.debug("[Forward] [Tcp] $tunnel 断开连接(UpStream)")
 					close()
 				}
-				launch {
+				BasicJob {
 					val reso = oCopier.start().await()
-					logger.info("[Forward] [Tcp] $tunnel 断开连接(oCopier)")
+					logger.debug("[Forward] [Tcp] $tunnel 断开连接(DownStream)")
 					close()
 				}
 			} else {
 				close()
 			}
-			
 		}
 		return this
 	}
 	
-	private val tunnel = "${connection.javaSocket().remoteSocketAddress}->${target.address}"
+	private val tunnel = "${connection.remoteAddress}->${target.address}"
 	override fun close() {
-		this.cancel("connection close")
 		super.close()
 		client.close()
 	}

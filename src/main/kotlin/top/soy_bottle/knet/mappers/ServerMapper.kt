@@ -1,16 +1,20 @@
 package top.soy_bottle.knet.mappers
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
+import top.soy_bottle.knet.protocols.knet.KNetProtocol
+import top.soy_bottle.knet.protocols.knet.ServerKNetConnection
 import top.soy_bottle.knet.utils.Env
 import top.soy_bottle.knet.utils.Scope
+import top.soy_bottle.knet.utils.coroutine.AsyncJob
 
 @Env(Scope.Server)
 abstract class ServerMapper(
-	val client: MapperClientConnection,
+	val protocol: KNetProtocol,
+	val client: ServerKNetConnection,
 	val id: Int,
-	val msg: ByteArray,
 ) {
 	
-	abstract fun bind(): Deferred<Boolean>
+	abstract fun bind(): AsyncJob<Result<Unit>>
+	
+	abstract fun close()
+	abstract override fun toString(): String
 }

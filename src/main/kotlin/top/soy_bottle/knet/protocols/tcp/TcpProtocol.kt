@@ -1,14 +1,10 @@
 package top.soy_bottle.knet.protocols.tcp
 
-import kotlinx.coroutines.runBlocking
-import top.soy_bottle.knet.logger
 import top.soy_bottle.knet.protocols.AbstractProtocol
 import top.soy_bottle.knet.protocols.Connection
-import top.soy_bottle.knet.protocols.ProtocolSystem
 import top.soy_bottle.knet.socket.ConnectionManager
 import top.soy_bottle.knet.socket.TcpServer
 import top.soy_bottle.knet.socket.TcpServerConfig
-import top.soy_bottle.knet.socket.TcpServerConnection
 
 class TcpProtocol(override val name: String, val config: TcpProtocolConfig) : AbstractProtocol<TcpConnection> {
 	override val type: String = "tcp"
@@ -16,10 +12,11 @@ class TcpProtocol(override val name: String, val config: TcpProtocolConfig) : Ab
 	
 	val protocolSelector = config.selector
 	
-	val server = TcpServer(object : TcpServerConfig<TcpServerConnection>() {
+	val server = TcpServer(object : TcpServerConfig() {
 		override val address = config.listen
-		override val handler = ConnectionManager<TcpServerConnection> {
+		override val handler = ConnectionManager {
 			val connection = TcpConnection(this@TcpProtocol, it)
+			println(connection)
 			connections += connection
 			val res = protocolSelector.selectAndHandle(connection)
 			
@@ -30,10 +27,12 @@ class TcpProtocol(override val name: String, val config: TcpProtocolConfig) : Ab
 	})
 	
 	init {
-		runBlocking {
-			server.bindSync()
+		val res = server.bindSync()
+		res.fold({
 			server.start()
-		}
+		}, {
+			it.printStackTrace()
+		})
 	}
 	
 	override fun detect(connection: Connection) = false

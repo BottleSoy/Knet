@@ -1,23 +1,38 @@
 /**
- * 服务端的配置类,定义了
+ * 服务端配置类
  */
 class ServerConfig {
     sections: SectionConfig[]
 }
+/**
+ * 协议选择器
+ * 对于{@link String}类型使用的是直接选择
+ * 对于{@link String[]}使用的是
+ */
+type Selector = String | String[] | ((Connection)=>String)
 
-type Selector = String | String[] | Function
-
+/**
+ * 一个区间配置
+ * 
+ * 通常来说一个区间配置对应的是一个协议
+ * 
+ * 对于部分区间配置可能会连带一串协议
+ */
 interface SectionConfig {
     type: String
     name: String
 }
 
+/**
+ * 反向代理协议
+ */
 class ForwardSectionConfig implements SectionConfig {
     type: String = "forward"
     name: String
 
     forward: String
 }
+
 class TcpSectionConfig implements SectionConfig {
     type: String = "tcp"
     name: String
@@ -48,15 +63,18 @@ class TLSSectionConfig implements SectionConfig {
      */
     context: Function | SSLContext
 
-
+    /**
+     * 
+     */
     contexts: SSLContext[] | Function
-    "context-seletor": String | Function
+    contextSeletor: String | Function | undefined
+    
 
     configure: {
-        "tls-version": String[] | String | null
-        "alpn": String[] | String | null
-        "chipers": String[] | String | null
-    } | Function | null
+        tlsVersion: String[] | String  | undefined
+        alpn: String[] | String  | undefined
+        chipers: String[] | String  | undefined
+    } | Function | undefined
 
 
 

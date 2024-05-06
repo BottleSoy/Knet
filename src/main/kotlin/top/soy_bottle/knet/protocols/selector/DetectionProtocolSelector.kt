@@ -28,6 +28,10 @@ class DetectionProtocolSelector(
 		}
 	}
 	
+	override fun toString(): String {
+		return "DetectionProtocolSelector(protocols=$protocols, fallbackProtocol=$fallbackProtocol)"
+	}
+	
 	companion object {
 	
 	}
